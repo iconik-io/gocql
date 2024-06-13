@@ -66,7 +66,7 @@ func (c *controlConn) heartBeat() {
 		return
 	}
 	reconnectionPolicy := c.session.cfg.ReconnectionPolicy
-	retry := 1
+	retry := 0
 
 	sleepTime := 1 * time.Second
 	timer := time.NewTimer(sleepTime)
@@ -91,7 +91,7 @@ func (c *controlConn) heartBeat() {
 		case *supportedFrame:
 			// Everything ok
 			sleepTime = 5 * time.Second
-			retry = 1
+			retry = 0
 			continue
 		case error:
 			retry++
