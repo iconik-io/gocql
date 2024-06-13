@@ -65,6 +65,8 @@ func (c *controlConn) heartBeat() {
 	if !atomic.CompareAndSwapInt32(&c.state, controlConnStarting, controlConnStarted) {
 		return
 	}
+	reconnectionPolicy := c.session.cfg.ReconnectionPolicy
+	retry := 1
 
 	sleepTime := 1 * time.Second
 	timer := time.NewTimer(sleepTime)
@@ -81,6 +83,7 @@ func (c *controlConn) heartBeat() {
 
 		resp, err := c.writeFrame(&writeOptionsFrame{})
 		if err != nil {
+			retry++
 			goto reconn
 		}
 
@@ -88,16 +91,17 @@ func (c *controlConn) heartBeat() {
 		case *supportedFrame:
 			// Everything ok
 			sleepTime = 5 * time.Second
+			retry = 1
 			continue
 		case error:
+			retry++
 			goto reconn
 		default:
 			panic(fmt.Sprintf("gocql: unknown frame in response to options: %T", resp))
 		}
 
 	reconn:
-		// try to connect a bit faster
-		sleepTime = 1 * time.Second
+		sleepTime = reconnectionPolicy.GetInterval(retry)
 		c.reconnect()
 		continue
 	}
